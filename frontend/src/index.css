@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* This overrides the default dark mode (which checks system settings)
+   and forces it to check for the .dark class instead.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
