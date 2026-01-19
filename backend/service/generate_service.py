@@ -4,8 +4,11 @@ from lib.randomize import randomize_questions_answers
 import re
 import io
 import json
-from xhtml2pdf import pisa
-
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 def generate_study_material(clean_data):
    
     flashcard_prompt = f"""You are an AI study assistant. 
@@ -123,75 +126,86 @@ def generate_hint(question, options):
     return {"hint": hint_response}
 
 def generate_pdf(allQA):
-    REVIEWER_TEMPLATE = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                @page { 
-                    size: A4; 
-                    margin: 2cm; 
-                }
-                body { 
-                    font-family: Helvetica, sans-serif; /* Changed to Helvetica (standard PDF font) */
-                    line-height: 1.6; 
-                }
-                h1 { 
-                    text-align: center; 
-                    color: #2c3e50; 
-                    border-bottom: 2px solid #2c3e50; 
-                    padding-bottom: 10px;
-                }
-                .qa-box { 
-                    margin-bottom: 20px; 
-                    padding: 15px; 
-                    background-color: #f9f9f9; /* xhtml2pdf prefers background-color over background */
-                    border-left: 5px solid #27ae60; 
-                    
-                    /* IMPORTANT: This prevents the box from splitting across pages */
-                    page-break-inside: avoid; 
-                }
-                .q { 
-                    font-weight: bold; 
-                    color: #27ae60; 
-                }
-                .a { 
-                    margin-top: 5px; 
-                    color: #333; 
-                }
-            </style>
-        </head>
-        <body>
-            <h1>Reviewer: {{ topic }}</h1>
-            
-            {% for item in qa_list %}
-            <div class="qa-box">
-                <div class="q">Q: {{ item.question }}</div>
-                <div class="a">A: {{ item.answer }}</div>
-            </div>
-            {% endfor %}
-        </body>
-        </html>
-        """
-    
-    # 1. Render the HTML with data
-    rendered_html = render_template_string(REVIEWER_TEMPLATE, qa_list=allQA, topic="Studily-FlashCards")  
-
-    # 2. Create the buffer
     pdf_buffer = io.BytesIO()
-
-    # 3. Generate PDF using xhtml2pdf (pisa)
-    pisa_status = pisa.CreatePDF(
-        src=rendered_html,   # The HTML string
-        dest=pdf_buffer      # The output buffer
+ 
+    available_width = A4[0] - (4 * cm)
+    
+    doc = SimpleDocTemplate(
+        pdf_buffer, 
+        pagesize=A4,
+        rightMargin=2*cm, leftMargin=2*cm,
+        topMargin=2*cm, bottomMargin=2*cm
+    )
+    
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=1, # Center
+        textColor=colors.HexColor('#2c3e50')
+    )
+    
+    question_style = ParagraphStyle(
+        'Question',
+        parent=styles['Normal'],
+        fontSize=12,
+        spaceAfter=5,
+        textColor=colors.HexColor('#27ae60'),
+        fontName='Helvetica-Bold'
+    )
+    
+    answer_style = ParagraphStyle(
+        'Answer',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=16,
+        textColor=colors.HexColor('#333333')
     )
 
-    # 4. Check for errors
-    if pisa_status.err:
-        print("Error generating PDF")
+    story = []
+    
+    story.append(Paragraph("Reviewer: Studily-FlashCards", title_style))
+    story.append(Spacer(1, 12))
+    
+    for item in allQA:
+       
+        q_text = f"Q: {item.get('question', '')}"
+        a_text = f"A: {item.get('answer', '')}"
+        
+        cell_content = [
+            Paragraph(q_text, question_style),
+            Spacer(1, 6),
+            Paragraph(a_text, answer_style)
+        ]
+        
+        
+        card_table = Table([[cell_content]], colWidths=[available_width])
+        
+        card_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f9f9f9')),
+            
+            ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#27ae60')),
+            
+            ('LEFTPADDING', (0,0), (-1,-1), 15),
+            ('RIGHTPADDING', (0,0), (-1,-1), 15),
+            ('TOPPADDING', (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            
+             ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
+        ]))
+        
+        # Add the card to the story
+        story.append(card_table)
+        
+        story.append(Spacer(1, 15))
+
+    try:
+        doc.build(story)
+        pdf_buffer.seek(0)
+        return pdf_buffer
+    except Exception as e:
+        print(f"ReportLab Error: {e}")
         return None
-
-    # 5. Reset buffer pointer to the beginning so it can be read
-    pdf_buffer.seek(0)
-
-    return pdf_buffer
