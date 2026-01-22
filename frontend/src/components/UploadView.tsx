@@ -97,6 +97,8 @@ const UploadView = ({
         },
         body: JSON.stringify({
           topic: topic,
+          quizCount: quizCount,
+          flashcardCount: cardCount
         }),
       });
 

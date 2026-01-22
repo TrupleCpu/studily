@@ -81,6 +81,8 @@ def create_by_topic():
         return jsonify({"error": "No json received"}), 400
     
     topic = data.get('topic')
+    quizCount = int(data.get('quizCount'))
+    flashcardCount = int(data.get('flashcardCount'))
 
     expand_prompt = f"""
     Explain the topic "{topic}" in a concise lecture format. 
@@ -88,14 +90,14 @@ def create_by_topic():
     Include examples where relevant. 
     Keep it under 200 words. 
 
-    !IMPORTANT: Ensure the content is detailed enough to generate up to 20 flashcards and quizzes.
+    !IMPORTANT: Ensure the content is detailed enough to generate up to {flashcardCount} flashcards and {quizCount} quizzes.
     Output only the content — no explanations or extra text.
     """
 
 
     expanded_topic = call_ai(expand_prompt)
 
-    materials = generate_study_material(expanded_topic)
+    materials = generate_study_material(expanded_topic, quizCount, flashcardCount)
 
     return jsonify(materials)
 
