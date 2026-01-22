@@ -6,7 +6,7 @@ import {
   ChevronRight,
   Download,
   RotateCw,
-  Sparkles,
+  Sparkles
 } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSpinner";
 

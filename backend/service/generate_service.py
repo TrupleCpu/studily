@@ -9,11 +9,11 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import cm
-def generate_study_material(clean_data):
+def generate_study_material(clean_data, quizCount, flashcardCount):
    
     flashcard_prompt = f"""You are an AI study assistant. 
 
-    Your task is to generate **up to 20 flashcards** from the following lecture content.
+    Your task is to generate **up to {flashcardCount} flashcards** from the following lecture content.
 
     Rules:
     1. Each flashcard must have:
@@ -22,7 +22,7 @@ def generate_study_material(clean_data):
     - "answer" (concise, accurate, and include examples if they exist in the content)
     2. Do NOT invent any information not in the lecture.
     3. Keep answers short but complete.
-    4. Generate **no more than 20 flashcards**.
+    4. Generate **no more than {flashcardCount} flashcards**.
     5. Output valid JSON matching this TypeScript type:
 
     export type FlashCardProps = {{
@@ -42,7 +42,7 @@ def generate_study_material(clean_data):
 
     try:
         flashcards = json.loads(flashcard_stripped)
-        flashcards = flashcards[:20]
+        flashcards = flashcards[:flashcardCount]
     except json.JSONDecodeError:
         return jsonify({"error": "Failed to parse flashcards", "raw": flashcard_response}), 500
 
@@ -51,7 +51,7 @@ def generate_study_material(clean_data):
     quiz_prompt = f"""
     You are an AI study assistant.
 
-    Your task is to generate **up to 20 quiz questions** based on the following flashcards.
+    Your task is to generate **up to {quizCount} quiz questions** based on the following flashcards.
 
     Rules:
     1. Each quiz question must have:
@@ -64,7 +64,7 @@ def generate_study_material(clean_data):
     2. Do NOT invent any information not in the flashcards.
     3. Make the questions varied: multiple choice, true/false, or concept recall.
     4. Keep answers concise.
-    5. Generate **no more than 20 quiz questions**.
+    5. Generate **no more than {quizCount} quiz questions**.
     6. Output valid JSON matching this TypeScript type:
 
     IMPORTANT: For each question, place the correct answer at a **random position** within the options array.
@@ -93,7 +93,7 @@ def generate_study_material(clean_data):
     try:
         quizcards = json.loads(quiz_stripped)
         quiz_randomized = randomize_questions_answers(quizcards)
-        quizcards = quiz_randomized[:20]  
+        quizcards = quiz_randomized[:quizCount]  
     except json.JSONDecodeError:
         return jsonify({"error": "Failed to parse quizcards", "raw": quiz_response}), 500
 

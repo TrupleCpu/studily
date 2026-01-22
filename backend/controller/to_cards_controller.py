@@ -19,6 +19,8 @@ def upload_file():
         return jsonify({"error": "No file uploaded"}), 400
     
     file = request.files["file"]
+    quizCount = int(request.form.get("quizCount"))
+    flashcardCount = int(request.form.get("flashcardCount"))
     filename = file.filename.lower()
     file_bytes = file.read()
     
@@ -33,7 +35,7 @@ def upload_file():
     else:
         return jsonify({"error": "Unsupported file type"}), 400
     
-    materials = generate_study_material(text)
+    materials = generate_study_material(text, quizCount, flashcardCount)
     return jsonify(materials)
 
 

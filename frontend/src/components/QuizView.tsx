@@ -37,7 +37,6 @@ const QuizView = ({ quiz }: { quiz: DefaultQuizProps[] }) => {
     setShuffledQuestion(quiz[currentIndex])
   }, [currentIndex]);
 
-  console.log(shuffledQuestion.correctIndex)
   const handleSelect = (index: number) => {
     if (selectedOption !== null) return;
     setSelectedOption(index);

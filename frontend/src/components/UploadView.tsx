@@ -5,6 +5,10 @@ import {
   RotateCw,
   Sparkles,
   UploadCloud,
+  Sliders,
+  Plus,
+  Minus,
+  Library,
 } from "lucide-react";
 import Button from "./Button";
 import { useState } from "react";
@@ -18,7 +22,7 @@ export type FlashCardProps = {
 };
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const UploadView = ({
   onGenerate,
@@ -29,6 +33,9 @@ const UploadView = ({
   const [topic, setTopic] = useState<string>("");
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [quizCount, setQuizCount] = useState<number>(20);
+  const [cardCount, setCardCount] = useState<number>(20);
+
   const [error, setError] = useState<string | null>(null);
 
   const handleDragOver = (e: { preventDefault: () => void }) => {
@@ -62,6 +69,8 @@ const UploadView = ({
 
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("quizCount", quizCount.toString())
+        formData.append("flashcardCount", cardCount.toString())
 
         const response = await fetch(`${API_BASE_URL}/api/upload-file`, {
           method: "POST",
@@ -73,7 +82,6 @@ const UploadView = ({
         }
 
         const materials = await response.json();
-        console.log(materials);
 
         onGenerate(materials.flashcards, materials.quizcards);
         return;
@@ -82,24 +90,21 @@ const UploadView = ({
       if (!topic) {
         throw new Error("No topic or file provided");
       }
-      const response = await fetch(
-        `${API_BASE_URL}/api/topic`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            topic: topic,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/topic`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic: topic,
+        }),
+      });
 
       const materialsFromTopic = await response.json();
       console.log(materialsFromTopic);
       onGenerate(
         materialsFromTopic.flashcards || DEFAULT_FLASHCARDS,
-        materialsFromTopic.quizcards || DEFAULT_QUIZ
+        materialsFromTopic.quizcards || DEFAULT_QUIZ,
       );
     } catch (err) {
       console.error(err);
@@ -210,6 +215,90 @@ const UploadView = ({
               </p>
             </div>
           )}
+        </div>
+
+        <div className="bg-slate-50 dark:bg-[#1f1f23] p-6 border-t border-slate-100 dark:border-[#27272a] rounded-2xl">
+          <div className="flex items-center gap-2 mb-4">
+            <Sliders
+              size={16}
+              className="text-slate-400 dark:text-neutral-500"
+            />
+            <span className="text-xs font-bold text-slate-500 dark:text-neutral-500 uppercase tracking-wider">
+              Configuration
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            {/* Flashcard Counter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-neutral-200 flex items-center gap-2">
+                <Library size={16} className="text-indigo-500" /> Flashcards
+              </label>
+
+              <div className="flex items-center bg-white dark:bg-[#18181b] border border-slate-200 dark:border-[#27272a] rounded-xl p-1">
+                <button
+                  onClick={() => setCardCount(Math.max(5, cardCount - 5))}
+                  disabled={cardCount <= 5}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg
+          text-slate-500 dark:text-neutral-400
+          hover:bg-slate-100 dark:hover:bg-[#27272a]
+          disabled:opacity-30 transition-colors"
+                >
+                  <Minus size={16} />
+                </button>
+
+                <div className="flex-1 text-center font-bold text-slate-900 dark:text-neutral-100">
+                  {cardCount}
+                </div>
+
+                <button
+                  onClick={() => setCardCount(Math.min(50, cardCount + 5))}
+                  disabled={cardCount >= 50}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg
+          text-slate-500 dark:text-neutral-400
+          hover:bg-slate-100 dark:hover:bg-[#27272a]
+          disabled:opacity-30 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Quiz Counter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-neutral-200 flex items-center gap-2">
+                <BrainCircuit size={16} className="text-pink-500" /> Questions
+              </label>
+
+              <div className="flex items-center bg-white dark:bg-[#18181b] border border-slate-200 dark:border-[#27272a] rounded-xl p-1">
+                <button
+                  onClick={() => setQuizCount(Math.max(3, quizCount - 1))}
+                  disabled={quizCount <= 3}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg
+          text-slate-500 dark:text-neutral-400
+          hover:bg-slate-100 dark:hover:bg-[#27272a]
+          disabled:opacity-30 transition-colors"
+                >
+                  <Minus size={16} />
+                </button>
+
+                <div className="flex-1 text-center font-bold text-slate-900 dark:text-neutral-100">
+                  {quizCount}
+                </div>
+
+                <button
+                  onClick={() => setQuizCount(Math.min(50, quizCount + 1))}
+                  disabled={quizCount >= 50}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg
+          text-slate-500 dark:text-neutral-400
+          hover:bg-slate-100 dark:hover:bg-[#27272a]
+          disabled:opacity-30 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {error && (
