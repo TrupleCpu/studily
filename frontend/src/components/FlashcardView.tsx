@@ -18,16 +18,15 @@ const FlashcardView = ({ flashcards }: { flashcards: FlashCardProps[] }) => {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [loadingExplanation, setLoadingExplanation] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  
   const card = flashcards[currentIndex];
 
-  const allQA = flashcards.map((q: {question: string, answer: string}) => ({
+  const allQA = flashcards.map((q) => ({
     question: q.question,
     answer: q.answer
-  }))
-
+  }));
 
   useEffect(() => {
-    // Resets state when card changes
     setIsFlipped(false);
     setExplanation(null);
   }, [currentIndex]);
@@ -44,18 +43,15 @@ const FlashcardView = ({ flashcards }: { flashcards: FlashCardProps[] }) => {
     }
   };
 
-  const handleExplain = async (e: { stopPropagation: () => void }) => {
+  const handleExplain = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (explanation) return; // Already loaded
+    if (explanation) return;
 
     setLoadingExplanation(true);
-
     try {
       const data = await fetch(`${API_BASE_URL}/api/explain`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: card.question,
           answer: card.answer,
@@ -64,56 +60,39 @@ const FlashcardView = ({ flashcards }: { flashcards: FlashCardProps[] }) => {
       const res = await data.json();
       setExplanation(res.explanation);
     } catch (err) {
-      setExplanation("Error generating explantion.");
+      setExplanation("Error generating explanation.");
     } finally {
       setLoadingExplanation(false);
     }
   };
 
   const handleToPdf = async () => {
-  setIsLoading(true);
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/convert-to-pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ allQA: allQA })
-    });
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/convert-to-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allQA })
+      });
 
-    if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error('Network response was not ok');
 
-    const contentType = response.headers.get('Content-Type');
-    if (!contentType || !contentType.includes('pdf')) {
-      const err = await response.json();
-      console.error('Server error:', err);
-      alert('PDF generation failed');
-      return;
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Reviewer.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Error downloading PDF');
+    } finally {
+      setIsLoading(false);
     }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-
-    const contentDisposition = response.headers.get('Content-Disposition');
-    let filename = 'Reviewer.pdf';
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?([^"]+)"?/);
-      if (match?.[1]) filename = match[1];
-    }
-
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-  } catch (error) {
-    console.error('Download failed:', error);
-    alert('Error downloading PDF');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto animate-in fade-in duration-500">
@@ -126,26 +105,35 @@ const FlashcardView = ({ flashcards }: { flashcards: FlashCardProps[] }) => {
         <Button
           variant="ghost"
           className="text-indigo-600 dark:text-indigo-400 gap-2 h-9 px-3"
-          onClick={() => handleToPdf()}
+          onClick={handleToPdf}
           disabled={isLoading}
-       >
+        >
           <Download size={16} /> Export PDF
         </Button>
       </div>
 
       {/* Card Container */}
       <div
-        className="w-full aspect-[4/3] md:aspect-[16/9] relative perspective-1000 group cursor-pointer"
+        className="w-full aspect-[4/3] md:aspect-[16/9] relative cursor-pointer"
+        style={{ perspective: "1000px" }}
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div
-          className={`
-        relative w-full h-full transition-all duration-500 transform-3d
-        ${isFlipped ? "rotate-y-180" : ""}
-      `}
+          className="relative w-full h-full transition-transform duration-500"
+          style={{ 
+            transformStyle: "preserve-3d",
+            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)"
+          }}
         >
           {/* Front Card */}
-          <div className="absolute inset-0 w-full h-full bg-white dark:bg-[#18181b] rounded-3xl shadow-xl border-b-4 border-slate-200 dark:border-[#27272a] p-8 flex flex-col items-center justify-center text-center backface-hidden">
+          <div 
+            className="absolute inset-0 w-full h-full bg-white dark:bg-[#18181b] rounded-3xl shadow-xl border-b-4 border-slate-200 dark:border-[#27272a] p-8 flex flex-col items-center justify-center text-center"
+            style={{ 
+              backfaceVisibility: "hidden", 
+              WebkitBackfaceVisibility: "hidden",
+              zIndex: isFlipped ? 0 : 2 // Ensures front stays on top when not flipped
+            }}
+          >
             <span className="absolute top-6 left-6 text-xs font-bold tracking-wider text-slate-400 dark:text-neutral-500 uppercase">
               Question
             </span>
@@ -160,20 +148,25 @@ const FlashcardView = ({ flashcards }: { flashcards: FlashCardProps[] }) => {
           </div>
 
           {/* Back Card */}
-          <div className="absolute inset-0 w-full h-full bg-indigo-600 dark:bg-[#1f2937] rounded-3xl shadow-xl border-b-4 border-indigo-800 dark:border-indigo-950 p-8 flex flex-col items-center justify-center text-center rotate-y-180 backface-hidden overflow-hidden">
+          <div 
+            className="absolute inset-0 w-full h-full bg-indigo-600 dark:bg-[#1f2937] rounded-3xl shadow-xl border-b-4 border-indigo-800 dark:border-indigo-950 p-8 flex flex-col items-center justify-center text-center overflow-hidden"
+            style={{ 
+              backfaceVisibility: "hidden", 
+              WebkitBackfaceVisibility: "hidden",
+              transform: "rotateY(180deg)" // Initially rotated away
+            }}
+          >
             <span className="absolute top-6 left-6 text-xs font-bold tracking-wider text-indigo-200 uppercase">
               Answer
             </span>
 
-            {/* Answer Content */}
             <div className="flex-1 flex flex-col items-center justify-center w-full">
               <p className="text-xl md:text-2xl font-medium text-white leading-relaxed mb-4">
                 {card.answer}
               </p>
 
-              {/* AI Explanation */}
               {explanation && (
-                <div className="mt-2 p-3 bg-black/20 rounded-xl text-sm text-indigo-100 text-left w-full animate-in fade-in slide-in-from-bottom-2 backface-hidden">
+                <div className="mt-2 p-3 bg-black/20 rounded-xl text-sm text-indigo-100 text-left w-full animate-in fade-in slide-in-from-bottom-2">
                   <div className="flex items-center gap-1 mb-1 text-indigo-200 font-semibold text-xs uppercase">
                     <Sparkles size={10} /> AI Explanation
                   </div>
@@ -182,17 +175,12 @@ const FlashcardView = ({ flashcards }: { flashcards: FlashCardProps[] }) => {
               )}
             </div>
 
-            {/* AI Button */}
             {!explanation && (
               <button
                 onClick={handleExplain}
-                className="absolute bottom-6 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm transition-colors flex items-center gap-2 backface-hidden"
+                className="absolute bottom-6 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm transition-colors flex items-center gap-2"
               >
-                {loadingExplanation ? (
-                  <LoadingSpinner />
-                ) : (
-                  <Sparkles size={14} />
-                )}
+                {loadingExplanation ? <LoadingSpinner /> : <Sparkles size={14} />}
                 {loadingExplanation ? "Thinking..." : "Explain with AI"}
               </button>
             )}
