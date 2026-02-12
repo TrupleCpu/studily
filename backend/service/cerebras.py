@@ -18,7 +18,7 @@ def call_ai(prompt: str) -> str:
                 "content": prompt
             }
         ],
-        model="gpt-oss-120b"
+        model="llama-3.3-70b"
     )
 
     return chat_completion.choices[0].message.content
